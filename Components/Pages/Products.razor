@@ -1,0 +1,142 @@
+﻿@page "/products"
+@rendermode InteractiveServer
+
+@using ProductInventoryApp.Models
+@using ProductInventoryApp.Services
+@inject ProductService ProductService
+
+<h3>Product Inventory</h3>
+
+<div class="mb-3">
+    <label class="form-label">Product Name</label>
+    <input class="form-control" @bind="product.Name" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Price</label>
+    <input class="form-control" type="number" @bind="product.Price" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Quantity</label>
+    <input class="form-control" type="number" @bind="product.Quantity" />
+</div>
+
+<button class="btn btn-primary" @onclick="SaveProduct">
+    @(isEditing ? "Update Product" : "Add Product")
+</button>
+
+@if (isEditing)
+{
+    <button class="btn btn-secondary ms-2" @onclick="CancelEdit">
+        Cancel
+    </button>
+}
+
+<hr />
+
+@if (products.Count == 0)
+{
+    <p>No products found.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th style="width: 180px;">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in products)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Price</td>
+                    <td>@item.Quantity</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-2" @onclick="() => EditProduct(item)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteProduct(item.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Product> products = new();
+    private Product product = new();
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        products = await ProductService.GetAllAsync();
+    }
+
+    private async Task SaveProduct()
+    {
+        if (string.IsNullOrWhiteSpace(product.Name))
+        {
+            return;
+        }
+
+        if (isEditing)
+        {
+            await ProductService.UpdateAsync(product);
+        }
+        else
+        {
+            await ProductService.CreateAsync(product);
+        }
+
+        product = new Product();
+        isEditing = false;
+
+        await LoadProducts();
+    }
+
+    private void EditProduct(Product selectedProduct)
+    {
+        product = new Product
+        {
+            Id = selectedProduct.Id,
+            Name = selectedProduct.Name,
+            Price = selectedProduct.Price,
+            Quantity = selectedProduct.Quantity
+        };
+
+        isEditing = true;
+    }
+
+    private async Task DeleteProduct(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        await ProductService.DeleteAsync(id);
+        await LoadProducts();
+    }
+
+    private void CancelEdit()
+    {
+        product = new Product();
+        isEditing = false;
+    }
+}
